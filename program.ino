@@ -3,8 +3,8 @@ int programPin = 2;
 int speedPin = A0;
 
 int program = 0;
-int msMinPerProgram[] = {5,    50,  50,  60,  50,  50,  40,  30,  15,  15,  40,  40,  30,  30};
-int msMaxPerProgram[] = {100, 300, 400, 600, 500, 400, 500, 300, 400, 400, 400, 400, 400, 400};
+int msMinPerProgram[] = {  5,  50,  50,  60,  50,  50,  40,  30,  15,  15,  40,  40,  30,  30,   5};
+int msMaxPerProgram[] = {100, 300, 400, 600, 500, 400, 500, 300, 400, 400, 400, 400, 400, 400, 100};
 unsigned long programSwitchTime = 0;
 int programSwitchDelay = 500;
 
@@ -169,6 +169,30 @@ void loop() {
     if (sensoredDelay(1)) return;
     digitalWrite(lightPins[0], LOW);
     if (sensoredDelay(1)) return;
+  } else if (program == 14) {
+    // kitt for remote
+    switchLights("01234567", HIGH);
+    if (sensoredDelay(10)) return;
+    switchLights("01234567", LOW);
+    if (sensoredDelay(15)) return;
+    for (int i=0; i<7; i++) {
+      digitalWrite(lightPins[i], HIGH);
+      if (sensoredDelay(1)) return;
+      digitalWrite(lightPins[i+1], HIGH);
+      if (sensoredDelay(1)) return;
+      digitalWrite(lightPins[i], LOW);
+      if (sensoredDelay(2)) return;
+    }
+    for (int i=7; i>0; i--) {
+      digitalWrite(lightPins[i], HIGH);
+      if (sensoredDelay(1)) return;
+      digitalWrite(lightPins[i-1], HIGH);
+      if (sensoredDelay(1)) return;
+      digitalWrite(lightPins[i], LOW);
+      if (sensoredDelay(2)) return;
+    }
+    digitalWrite(lightPins[0], LOW);
+    if (sensoredDelay(1200)) return;
   } else {
     // kitt
     for (int i=0; i<7; i++) {
@@ -199,9 +223,9 @@ void switchLights(String leds, boolean value) {
 
 boolean sensoredDelay(int factor) {
   unsigned long startTime = millis();
-  int time = 50 * factor;
+  unsigned long time = msMinPerProgram[program] * factor;
   while (millis() - startTime < time) {
-    time = map(analogRead(speedPin), 0, 1023, msMinPerProgram[program], msMaxPerProgram[program]) * factor;
+    time = map(analogRead(speedPin), 1023, 0, msMinPerProgram[program], msMaxPerProgram[program]) * factor;
     if (millis() - programSwitchTime > programSwitchDelay && digitalRead(programPin) == HIGH) {
       program = program + 1;
       if (program == (sizeof(msMinPerProgram)/sizeof(int))) {
