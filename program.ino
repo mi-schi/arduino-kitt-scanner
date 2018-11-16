@@ -1,8 +1,8 @@
 byte lightPins[8] = {0, 1, 2, 3, 4, 8, 9, 10};
-byte programPin = 8;
+byte programPin = 5;
 byte speedPin = A7;
 
-byte allLights[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+byte allLights[8] = {7, 6, 5, 4, 3, 2, 1, 0};
 byte halfLights[2][4] = {
   {0, 1, 2, 3},
   {4, 5, 6, 7}
@@ -15,8 +15,10 @@ byte splittedLights[4][4][2] = {
   {{0, 4}, {1, 5}, {2, 6}, {3, 7}}
 };
 
-volatile byte program = 0;
+byte program = 0;
 unsigned long programSwitchTime = 0;
+byte toggler = 1;
+bool programSwitched = false;
 
 void setup() {
   for (byte i = 0; i < 8; i++) {
@@ -28,6 +30,10 @@ void setup() {
 }
 
 void loop() {
+  if (programSwitched) {
+    switchLights(allLights, 8, 0);
+    programSwitched = false;  
+  }
   if (program == 1 || program == 2) {
     // flasher / flasher 2 times
     flasher(6, (program == 2) ? 3 : 6);
@@ -44,13 +50,11 @@ void loop() {
     sensoredDelay(8);
   } else if (program == 4) {
     // police 2 times
-    for (byte l = 0; l < 2; l++) {
-      for (byte i = 1; i < 5; i++) {
-        switchLights(halfLights[l], 4, i % 2);
-        sensoredDelay(4);
-      }
-      sensoredDelay(2);
+    for (byte i = 1; i < 5; i++) {
+      switchLights(halfLights[toggler], 4, i % 2);
+      sensoredDelay(4);
     }
+    sensoredDelay(2);
   } else if (program == 5 || program == 6) {
     // splitted one out to in bounce / splitted one left to right bounce 
     for (byte i = 0; i < 6; i++) {
@@ -61,11 +65,9 @@ void loop() {
   } else if (program >= 7 && program <= 10) {
     // splitted out to in snake / splitted left to right snake
     // splitted in to out snake / splitted right to left snake
-    for (byte value = 1; value >= 0; value--) {
-      for (byte i = 0; i < 4; i++) {
-        switchLights(splittedLights[program - 7][i], 2, value);
-        sensoredDelay(4);
-      }
+    for (byte i = 0; i < 4; i++) {
+      switchLights(splittedLights[program - 7][i], 2, toggler);
+      sensoredDelay(4);
     }
   } else if (program >= 11 && program <= 14) {
     // splitted out to in full, off / splitted left to right full, off
@@ -76,25 +78,16 @@ void loop() {
     }
     switchLights(allLights, 8, 0);
     sensoredDelay(8);
-  } else if (program == 15) {
-    // snake
-    for (byte value = 1; value >= 0; value--) {
-      for (byte i = 0; i < 8; i++) {
-        digitalWrite(lightPins[i], value);
-        sensoredDelay(2);
-      }
-    } 
-  } else if (program == 16) {
-    // snake reverse
-    for (byte value = 1; value >= 0; value--) {
-      for (byte i = 7; i >= 0; i--) {
-        digitalWrite(lightPins[i], value);
-        sensoredDelay(2);
-      }
+  } else if (program == 15 || program == 16) {
+    // snake / snake reverse
+    for (byte i = 0; i < 8; i++) {
+      digitalWrite((program == 16) ? lightPins[allLights[i]] : lightPins[i], toggler);
+      sensoredDelay(2);
     }
   } else if (program == 0 || program == 17) {
     // kitt // kitt with 2 min delay
     if (program == 17) {
+      digitalWrite(lightPins[0], 0);
       interruptedDelay(120000);
     }
     for (byte i = 0; i < 7; i++) {
@@ -114,6 +107,7 @@ void loop() {
       sensoredDelay(2);
     }
   }
+  toggler = 1 - toggler;
 }
 
 void flasher(byte firstFactor, byte secondFactor) {
@@ -130,13 +124,12 @@ void switchLights(byte lights[], byte count, byte value) {
 }
 
 void sensoredDelay(byte factor) {
-  unsigned long startTime = millis();
   short poti = analogRead(speedPin);
   short ms = (poti / 12 + 10) * factor;
   interruptedDelay(ms);
 }
 
-void interruptedDelay(int ms) {
+void interruptedDelay(unsigned long ms) {
   unsigned long startTime = millis();
   while (millis() - startTime < ms) {
     if (millis() - programSwitchTime > 500 && digitalRead(programPin) == 1) {
@@ -144,7 +137,8 @@ void interruptedDelay(int ms) {
       if (program > 17) {
         program = 0;
       }
-      switchLights(allLights, 8, 0);
+      toggler = 1;
+      programSwitched = true;
       programSwitchTime = millis();
 
       return;
