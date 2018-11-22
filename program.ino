@@ -89,6 +89,7 @@ void loop() {
     if (program == 17) {
       digitalWrite(lightPins[0], 0);
       interruptedDelay(120000);
+      flasher(20, 6);
     }
     for (byte i = 0; i < 7; i++) {
       digitalWrite(lightPins[i], 1);
